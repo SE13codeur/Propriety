@@ -67,9 +67,6 @@ class App extends Component<any, AppState>{
     // web3.eth.getAccounts().then(accounts => this.setState({connected: accounts[0]}));
 
     const accounts = await web3.eth.getAccounts();
-    this.setState({connected: accounts[0]});
-
-    this.setState({contract});
 
     const nbrPropriety = await contract.methods.totalProprietes().call();
     const proprieties = new Array<Propriety>();
@@ -77,7 +74,7 @@ class App extends Component<any, AppState>{
       const propriety = await contract.methods.proprieteIndex(i).call();
       proprieties.push(this.parsePropriety(propriety))
     }
-    this.setState({proprieties});
+    this.setState({proprieties, contract, connected: accounts[0]});
   }
 
 
@@ -88,13 +85,15 @@ class App extends Component<any, AppState>{
         <h1>My account</h1>
           <p><i>{this.state.connected}</i></p>
 
-        <h2>My proprieties</h2>        
+          <h2>My proprieties</h2>        
           {
             this.state.proprieties
-            .filter(propriety => propriety.owner === this.state.connected)
+            .filter(propriety => propriety.owner !== this.state.connected)
             .map((propriety, index) =>
               <div key={index}>
                 <p>{propriety.id} - {propriety.owner} - {propriety.price}</p>
+                <input type='text' onChange={this.changePrice(propriety)} />
+                <button onClick={this.listProprietyOn(propriety)}>SELL</button>
               </div>
             )
           }
@@ -102,10 +101,15 @@ class App extends Component<any, AppState>{
         <h2>Others proprieties</h2>        
           {
             this.state.proprieties
-            .filter(propriety => propriety.owner !== this.state.connected)
+            .filter(propriety => propriety.owner === this.state.connected)
             .map((propriety, index) =>
               <div key={index}>
                 <p>{propriety.id} - {propriety.owner} - {propriety.price}</p>
+                {
+                  propriety.state === ProprietyState.EN_VENTE &&
+                
+                <button onClick={this.buyPropriety(propriety)}>Buy</button>
+                } 
               </div>
             )
           }
@@ -114,13 +118,70 @@ class App extends Component<any, AppState>{
     );
   }
 
+  private changePrice(propriety: Propriety) {
+    return (event: React.ChangeEvent<HTMLInputElement>) => {
+      propriety.price = event.currentTarget.value;
+      this.updateProprieties(propriety);
+    }
+  }
+
+  private updateProprieties(propriety: Propriety) {
+    const proprieties: Array<Propriety> = this.state.proprieties;
+    const index = proprieties.findIndex(prop => prop.id === propriety.id);
+
+    proprieties[index] = propriety;
+
+    this.setState({proprieties});
+  }
+
+  private listProprietyOn(propriety: Propriety) {
+    return () => {
+      if (this.state.contract) {
+        const contract: Contract = this.state.contract!;
+        contract.methods.listProprietyOn(propriety.id, Web3.utils.toWei(propriety.price))
+        .send({from: this.state.connected})
+          .on('transactionHash', (hash: string) => {
+            console.log('tx hash', hash);
+          })
+          .on('confirmation', (no: number) => {
+            console.log('conf', no);
+          })
+          .on('error', (erreur: Error) => {
+            console.log(erreur);
+          })
+          .then((data: Object) => console.log('ok', data));
+      }
+    }
+  }
+
+  private buyPropriety(propriety: Propriety) {
+    return () => {
+      if(this.state.contract) {
+        const contract: Contract = this.state.contract!;
+        contract.methods.acheterPropriete(propriety.id)
+        .send({from: this.state.connected, value: Web3.utils.toWei(propriety.price)})
+        .on('transactionHash', (hash: string) => {
+          console.log('tx hash', hash);
+        })
+        .on('confirmation', (no: number) => {
+          console.log('conf', no);
+        })
+        .on('error', (error: Error) => {
+          console.log('err', error.message);
+        })
+        .then((data: Object) => console.log('validee', data))
+        
+      }
+    }
+  }
+
   private parsePropriety(propriety: Array<string>): Propriety {
     return {
       id: +propriety[0],
       owner: propriety[1],
       lat: +propriety[2],
       long: +propriety[3],
-      price: propriety[4],
+      price: Web3.utils.fromWei(propriety[4], 'ether'),
       state: propriety[5],
     } as Propriety;
   }
