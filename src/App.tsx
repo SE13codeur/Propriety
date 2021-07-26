@@ -149,7 +149,10 @@ class App extends Component<any, AppState>{
           .on('error', (erreur: Error) => {
             console.log(erreur);
           })
-          .then((data: Object) => console.log('ok', data));
+          .then(() => {
+            propriety.state = ProprietyState.EN_VENTE;
+            this.updateProprieties(propriety);
+          });
       }
     }
   }
@@ -169,8 +172,11 @@ class App extends Component<any, AppState>{
         .on('error', (error: Error) => {
           console.log('err', error.message);
         })
-        .then((data: Object) => console.log('validee', data))
-        
+        .then(() => {
+          propriety.owner = this.state.connected!;
+          propriety.state = ProprietyState.EN_PASSATION;
+          this.updateProprieties(propriety);
+        });
       }
     }
   }
