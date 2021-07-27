@@ -1,11 +1,11 @@
-export interface Propriete {
+export interface Propriety {
     id: number; 
-    proprietaire: string; // ethereum address
+    owner: string; // ethereum address
     lat: number;
     long: number;
   
     // price in Wei (1 ether = 10e18 Wei)
-    prix: string;
+    price: string;
     state: ProprietyState;
   }
   

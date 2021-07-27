@@ -5,7 +5,7 @@ import abi from '../contracts/ContractABI';
 
 import { ProprietyState, Propriety, TransactionState, TxCallback } from '../utils/types';
 
-export const CONTRACT_ADDRESS = '';
+export const CONTRACT_ADDRESS = '0x8bEf2F8C950D23D7C34A566F5eCd14609EBaEF67';
 
 export class ContractService {
 
@@ -13,7 +13,7 @@ export class ContractService {
   private static web3: Web3 | null = null;
 
   // web3 Websockets pour les évènements
-  private static web3WS: Web3 | null = null;
+  private static WsWeb3: Web3 | null = null;
 
   constructor(
     public contract: Contract
@@ -31,13 +31,13 @@ export class ContractService {
   }
 
   // Singleton for web3 Websocket
-  private static GetWeb3WS(): Web3 {
-    if (ContractService.web3WS === null) {
+  private static GetWsWeb3(): Web3 {
+    if (ContractService.WsWeb3 === null) {
       Web3.givenProvider.enable();
       // ws://127.0.0.1:7545 => Ganache Config by default
-      ContractService.web3WS = new Web3(new Web3.providers.WebsocketProvider('ws://127.0.0.1:7545'));
+      ContractService.WsWeb3 = new Web3(new Web3.providers.WebsocketProvider('ws://127.0.0.1:7545'));
     }
-    return ContractService.web3WS!;
+    return ContractService.WsWeb3!;
   }
 
   private static InitContract(web3: Web3): ContractService {
@@ -52,20 +52,20 @@ export class ContractService {
   }
   // Loading the contract with Websocket
   public static WsContract() {
-    return ContractService.InitContract(ContractService.GetWeb3WS());
+    return ContractService.InitContract(ContractService.GetWsWeb3());
   }
 
   // Loading the account of user
-  public static GetCompte(): Promise<string> {
-    // Prend le compte index = 0 par défaut
-    return ContractService.GetWeb3().eth.getAccounts().then(accs => accs[0]);
+  public static GetAccount(): Promise<string> {
+    //  index = 0 by défaut
+    return ContractService.GetWeb3().eth.getAccounts().then(accounts => accounts[0]);
   }
 
-  // Charge les dix premières propriétés
-  public async getProprietys(): Promise<Array<Propriety>> {
-    const nbProprietys = await this.contract.methods.totalProprietys().call();
+  // Loading of the 10 first proprieties
+  public async getProprieties(): Promise<Array<Propriety>> {
+    const numberOfProprieties = await this.contract.methods.totalProprieties().call();
     let promises = new Array<Promise<string[]>>();
-    for (let i = 0; i < nbProprietys; i++) {
+    for (let i = 0; i < numberOfProprieties; i++) {
       promises.push(this.contract.methods.proprietyIndex(i).call());
     }
 
@@ -74,27 +74,27 @@ export class ContractService {
     );
   }
 
-  public acheterPropriety(p: Propriety, txCallback: TxCallback) {
-    const data = this.contract.methods.acheterPropriety(p.id).encodeABI();
-    this.envoyerTransaction(data, {value: p.prix}, txCallback);
+  public buyPropriety(propriety: Propriety, txCallback: TxCallback) {
+    const data = this.contract.methods.buyPropriety(propriety.id).encodeABI();
+    this.sendTransaction(data, {value: propriety.price}, txCallback);
   }
 
-  public declarerPropriety(p: Propriety, txCallback: TxCallback) {
-    const data = this.contract.methods.declarerPropriety(p.id).encodeABI();
-    this.envoyerTransaction(data, {}, txCallback);
+  public declarePropriety(propriety: Propriety, txCallback: TxCallback) {
+    const data = this.contract.methods.declarePropriety(propriety.id).encodeABI();
+    this.sendTransaction(data, {}, txCallback);
   }
 
-  public mettreProprietyEnVente(p: Propriety, txCallback: TxCallback) {
-    const data = this.contract.methods.mettreProprietyEnVente(p.id, Web3.utils.toWei(p.prix)).encodeABI();
-    this.envoyerTransaction(data, {}, txCallback);
+  public listProprietyOn(propriety: Propriety, txCallback: TxCallback) {
+    const data = this.contract.methods.listProprietyOn(propriety.id, Web3.utils.toWei(propriety.price)).encodeABI();
+    this.sendTransaction(data, {}, txCallback);
   }
 
-  // Envoie les transactions incluant des données et modification d'état dans le contract
-  private async envoyerTransaction(data: string, params: any, txCallback: TxCallback) {
-    let from = await ContractService.GetCompte();
+  // Send transactions, also data + state modification to the contract
+  private async sendTransaction(data: string, params: any, txCallback: TxCallback) {
+    let from = await ContractService.GetAccount();
     ContractService.GetWeb3().eth.sendTransaction({...params, data, from, to: CONTRACT_ADDRESS})
       .on('transactionHash', (hash: string) => {
-        txCallback(TransactionState.RECUE, hash);
+        txCallback(TransactionState.RECEIVED, hash);
       })
       .on('confirmation', (no: number) => {
         txCallback(TransactionState.BEING_VALIDATED, no);
@@ -108,11 +108,11 @@ export class ContractService {
   private parsePropriety(data: string[]): Propriety {
     return {
       id: +data[0],
-      proprietaire: data[1],
+      owner: data[1],
       lat: +data[2],
       long: +data[3],
-      prix: data[4],
-      etat: data[5] as ProprietyState,
+      price: data[4],
+      state: data[5] as ProprietyState,
     };
   }
 }

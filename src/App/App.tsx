@@ -12,7 +12,7 @@ interface AppState {
 
   connected?: string;
   error?: string;
-  proprietyEnTraitement?: Propriety; // transaction
+  beingProcessedTransaction?: Propriety;
 }
 
 declare global {
@@ -28,16 +28,16 @@ class App extends React.Component<any, AppState> {
 
     connected: undefined,
     error: undefined,
-    proprietyEnTraitement: undefined,
+    beingProcessedTransaction: undefined,
   }
 
   public componentDidMount() {
-    ContractService.Contrat()
+    ContractService.Contract()
       .getProprieties()
       .then(proprieties => this.setState({proprieties}));
 
-    // Charge le compte actuellement connecté sur Metamask
-    ContractService.GetCompte()
+    // loading account connected on Metamask
+    ContractService.GetAccount()
       .then(account => this.setState({connected: account}));
 
     // Met à jour le compte lorsque l'utilisateur en sélectionne un nouveau sur
@@ -48,7 +48,7 @@ class App extends React.Component<any, AppState> {
       });
     }
 
-    ContractService.wSContract().contract.events.Sale(null, (error: Error, response: any) => {
+    ContractService.WsContract().contract.events.Sale(null, (error: Error, response: any) => {
       if (error) {
         console.warn('ws', error);
         return;
@@ -61,7 +61,7 @@ class App extends React.Component<any, AppState> {
       // update during a sale
       this.updatePropriety({
         ...propriety,
-        owner: values.nouveauProprio,
+        owner: values.newOwner,
         state: ProprietyState.BEING_SALE,
       } as Propriety);
     });
@@ -73,13 +73,13 @@ class App extends React.Component<any, AppState> {
         <header className="App-header">
           <div className="Overlay"></div>
           <div className="Account">
-            <p>Connecté <b>{this.state.connected}</b></p>
+            <p>Connected <b>{this.state.connected}</b></p>
           </div>
 
           <div className="Title">
-            <h1>Gérez vos propriétés</h1>
-            <h2>En toute indépendance et transparence</h2>
-            <h2>Avec <b>Ethereum</b></h2>
+            <h1>Manage your proprieties</h1>
+            <h2>With Blockchain Philosophy</h2>
+            <h2>With <b>Ethereum</b></h2>
           </div>
         </header>
 
@@ -92,14 +92,14 @@ class App extends React.Component<any, AppState> {
           }
 
           <section className="Green">
-            <h1>De nouvelles propriétés chaque jour</h1>
+            <h1>Each day, we have new proprieties</h1>
             <div className="Properties">
               {this.renderProprieties()}
             </div>
           </section>
 
           <section className="White">
-            <h1>Gérez vos propriétés</h1>
+            <h1>Manage your proprieties</h1>
             <div className="Properties">
               {this.renderMyProprieties()}
             </div>
@@ -111,7 +111,7 @@ class App extends React.Component<any, AppState> {
 
   private renderProprieties() {
     return this.state.proprieties
-      .filter(p => this.state.connected !== propriety.owner)
+      .filter(propriety => this.state.connected !== propriety.owner)
       .map((propriety, index) => (
         <div key={index} className="Property">
           <div className="Property-header" style={{
@@ -119,17 +119,17 @@ class App extends React.Component<any, AppState> {
           }}>
             <div className="Overlay"></div>
             <p className="Tag">#{propriety.id}</p>
-            <p className="Loc">({propriety.lat / 10000}, {p.long / 10000})</p>
+            <p className="Loc">({propriety.lat / 10000}, {propriety.long / 10000})</p>
           </div>
 
           <div className="Property-content">
             {
-              propriety.state === ProprietyState.EN_Sale &&
+              propriety.state === ProprietyState.ON_SALE &&
                 <div className="Action">
-                  <p className="Label" style={{backgroundColor: '#7dcfb6'}}>En Sale</p>
+                  <p className="Label" style={{backgroundColor: '#7dcfb6'}}>On sale</p>
                   <p className="Tenant">{propriety.owner}</p>
-                  <p className="Price">{parseFloat(Web3.utils.fromWei('' + propriety.prix, 'ether')).toFixed(4)} Ξ</p>
-                  <button onClick={this.acheterPropriety(Object.assign({}, propriety))}>Acheter</button>
+                  <p className="Price">{parseFloat(Web3.utils.fromWei('' + propriety.price, 'ether')).toFixed(4)} Ξ</p>
+                  <button onClick={this.buyPropriety(Object.assign({}, propriety))}>Buy</button>
                   {this.renderMessage(propriety)}
                 </div>
             }
@@ -149,34 +149,34 @@ class App extends React.Component<any, AppState> {
           }}>
             <div className="Overlay"></div>
             <p className="Tag">#{propriety.id}</p>
-            <p className="Loc">({propriety.lat / 10000}, {p.long / 10000})</p>
+            <p className="Loc">({propriety.lat / 10000}, {propriety.long / 10000})</p>
           </div>
 
           <div className="Property-content">
             {
-              propriety.state === ProprietyState.ALIENEE &&
+              propriety.state === ProprietyState.SOLD &&
                 <div className="Action">
                   <div className="Input">
-                    <input type="text" value={propriety.prix} onChange={this.modifierPrixPropriety(Object.assign({}, propriety))} />
+                    <input type="text" value={propriety.price} onChange={this.modifierpricePropriety(Object.assign({}, propriety))} />
                     <label>Ξ</label>
                   </div>
-                  <button onClick={this.mettreProprietyEnSale(Object.assign({}, propriety))}>Mettre en Sale</button>
+                  <button onClick={this.listProprietyOn(Object.assign({}, propriety))}>Mettre en Sale</button>
                   {this.renderMessage(propriety)}
                 </div>
             }
             {
-              p.state === ProprietyState.BEING_SALE &&
+              propriety.state === ProprietyState.BEING_SALE &&
                 <div className="Action">
-                  <p className="Label" style={{backgroundColor: '#777'}}>A déclarer</p>
-                  <button onClick={this.declarerPropriety(Object.assign({}, propriety))}>Déclarer</button>
-                  {this.renderMessage(p)}
+                  <p className="Label" style={{backgroundColor: '#777'}}>To declare</p>
+                  <button onClick={this.declarePropriety(Object.assign({}, propriety))}>Declare</button>
+                  {this.renderMessage(propriety)}
                 </div>
             }
             {
-              propriety.state === ProprietyState.EN_Sale &&
+              propriety.state === ProprietyState.ON_SALE &&
                 <div className="Action">
-                  <p className="Label">Vous vendez</p>
-                  <p className="Price">{parseFloat(Web3.utils.fromWei(propriety.prix, 'ether')).toFixed(4)} Ξ</p>
+                  <p className="Label">You sale</p>
+                  <p className="Price">{parseFloat(Web3.utils.fromWei(propriety.price, 'ether')).toFixed(4)} Ξ</p>
                 </div>
             }
           </div>
@@ -186,85 +186,85 @@ class App extends React.Component<any, AppState> {
 
   // Affiche message de chargement sous la propriété concernée
   private renderMessage(propriety: Propriety) {
-    if (this.state.proprietyEnTraitement) {
-      let proprietyEnTraitement: Propriety = this.state.proprietyEnTraitement!;
+    if (this.state.beingProcessedTransaction) {
+      let beingProcessedTransaction: Propriety = this.state.beingProcessedTransaction!;
       return (
-        proprietyEnTraitement.id === propriety.id &&
-          <p className="Loading-message">Traitement en cours...</p>
+        beingProcessedTransaction.id === propriety.id &&
+          <p className="Loading-message">Transaction is going on...</p>
       )
     }
     return null;
   }
 
-  private acheterPropriety(propriety: Propriety) {
+  private buyPropriety(propriety: Propriety) {
     return () => {
-      this.setState({proprietyEnTraitement: propriety});
-      ContractService.Contrat().acheterPropriety(propriety, (state: TransactionState, response: any) => {
+      this.setState({beingProcessedTransaction: propriety});
+      ContractService.Contract().buyPropriety(propriety, (state: TransactionState, response: any) => {
         switch(state) {
-          case TransactionState.EN_VALIDATION:
+          case TransactionState.BEING_VALIDATED:
             console.log(response);
             break;
-          case TransactionState.CONFIRMEE:
+          case TransactionState.CONFIRMED:
             propriety.owner = this.state.connected!;
             propriety.state = ProprietyState.BEING_SALE;
             this.updatePropriety(propriety);
             break;
-          case TransactionState.ERRoR:
+          case TransactionState.ERROR:
             this.setState({error: response});
             break;
         }
-        this.setState({proprietyEnTraitement: undefined});
+        this.setState({beingProcessedTransaction: undefined});
       });
     }
   }
 
-  private declarerPropriety(propriety: Propriety) {
+  private declarePropriety(propriety: Propriety) {
     return () => {
-      this.setState({proprietyEnTraitement: propriety});
-      ContractService.Contrat().declarerPropriety(propriety, (state: TransactionState, response: any) => {
+      this.setState({beingProcessedTransaction: propriety});
+      ContractService.Contract().declarePropriety(propriety, (state: TransactionState, response: any) => {
         switch(state) {
-          case TransactionState.EN_VALIDATION:
+          case TransactionState.BEING_VALIDATED:
             console.log(response);
             break;
-          case TransactionState.CONFIRMEE:
+          case TransactionState.CONFIRMED:
             propriety.owner = this.state.connected!;
-            propriety.state = ProprietyState.ALIENEE;
+            propriety.state = ProprietyState.SOLD;
             this.updatePropriety(propriety);
             break;
-          case transactionState.ERRoR:
+          case TransactionState.ERROR:
             this.setState({error: response});
             break;
         }
-        this.setState({proprietyEnTraitement: undefined});
+        this.setState({beingProcessedTransaction: undefined});
       });
     }
   }
 
-  private mettreProprietyEnSale(propriety: Propriety) {
+  private listProprietyOn(propriety: Propriety) {
     return () => {
-      this.setState({proprietyEnTraitement: propriety});
-      ContractService.Contrat().mettreProprietyEnSale(propriety, (state: transactionState, response: any) => {
+      this.setState({beingProcessedTransaction: propriety});
+      ContractService.Contract().listProprietyOn(propriety, (state: TransactionState, response: any) => {
         switch(state) {
-          case transactionState.EN_VALIDATION:
+          case TransactionState.BEING_VALIDATED:
             console.log(response);
             break;
-          case transactionState.CONFIRMEE:
-            propriety.state = ProprietyState.EN_Sale;
-            // Le prix est affiché en enregistré en Wei
-            this.updatePropriety({...propriety, prix: Web3.utils.toWei(propriety.prix)});
+          case TransactionState.CONFIRMED:
+            propriety.state = ProprietyState.ON_SALE;
+            // Le price est affiché en enregistré en Wei
+            this.updatePropriety({...propriety, price: Web3.utils.toWei(propriety.price)});
             break;
-          case transactionState.ERRoR:
+          case TransactionState.ERROR:
             this.setState({error: response});
             break;
         }
-        this.setState({proprietyEnTraitement: undefined});
+        this.setState({beingProcessedTransaction: undefined});
       });
     }
   }
 
-  private modifierPrixPropriety(propriety: Propriety) {
+  private modifierpricePropriety(propriety: Propriety) {
     return (evt: React.ChangeEvent<HTMLInputElement>) => {
-      propriety.prix = evt.currentTarget.value;
+      propriety.price = evt.currentTarget.value;
       this.updatePropriety(propriety);
     }
   }
