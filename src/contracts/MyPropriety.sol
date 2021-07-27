@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: UNLICENSED */
 pragma solidity ^0.8.0;
+
 contract MyPropriety {
     event Sale(uint256 id, address assignor, address assignee, uint256 date);
 
     enum StateProperty {        
         ON_SALE, 
-        NOT_FOR_SALE,   
+        BEING_SALE,   
         SOLD
     }
 
@@ -44,7 +45,7 @@ contract MyPropriety {
         uint256 _long        
         ) external isAgentAgree { 
                        
-            proprieties[_id] = Propriety(_id, _owner, _lat, _long, 0, StateProperty.NOT_FOR_SALE);            
+            proprieties[_id] = Propriety(_id, _owner, _lat, _long, 0, StateProperty.BEING_SALE);            
         
             listProprieties.push(_id);    
         }
@@ -82,6 +83,6 @@ contract MyPropriety {
         require(proprieties[_id].state == StateProperty.SOLD);                        
         payable(proprieties[_id].owner).transfer(msg.value);                
         
-        proprieties[_id].state = StateProperty.NOT_FOR_SALE;                     
+        proprieties[_id].state = StateProperty.BEING_SALE;                     
     }
 }
